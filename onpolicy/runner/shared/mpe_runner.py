@@ -61,20 +61,13 @@ class MPERunner(Runner):
 
                 if self.env_name == "MPE":
                     env_infos = {}
-                    idv_rews_per_agent = [[] for _ in range(self.num_agents)]
-                    shared_rews = []
-                    for info in infos:
-                        total = 0.0
-                        for agent_id in range(self.num_agents):
-                            if 'individual_reward' in info[agent_id]:
-                                r = info[agent_id]['individual_reward']
-                                idv_rews_per_agent[agent_id].append(r)
-                                total += r
-                        shared_rews.append(total)
                     for agent_id in range(self.num_agents):
+                        idv_rews = []
+                        for info in infos:
+                            if 'individual_reward' in info[agent_id].keys():
+                                idv_rews.append(info[agent_id]['individual_reward'])
                         agent_k = 'agent%i/individual_rewards' % agent_id
-                        env_infos[agent_k] = idv_rews_per_agent[agent_id]
-                    env_infos["shared/total_reward"] = shared_rews
+                        env_infos[agent_k] = idv_rews
 
                 train_infos["average_episode_rewards"] = np.mean(self.buffer.rewards) * self.episode_length
                 print("average episode rewards is {}".format(train_infos["average_episode_rewards"]))

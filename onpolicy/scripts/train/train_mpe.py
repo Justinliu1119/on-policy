@@ -7,9 +7,12 @@ import setproctitle
 import numpy as np
 from pathlib import Path
 import torch
+import sys
+sys.path.insert(0, '/home/luv9292/on-policy')
 from onpolicy.config import get_config
 from onpolicy.envs.mpe.MPE_env import MPEEnv
 from onpolicy.envs.env_wrappers import SubprocVecEnv, DummyVecEnv
+import logging
 
 """Train script for MPEs."""
 
@@ -23,6 +26,7 @@ def make_train_env(all_args):
                       all_args.env_name + "environment.")
                 raise NotImplementedError
             env.seed(all_args.seed + rank * 1000)
+            env.world.log_individual_rewards = True  # Enable logging of individual rewards
             return env
         return init_env
     if all_args.n_rollout_threads == 1:
@@ -158,6 +162,16 @@ def main(args):
     runner = Runner(config)
     runner.run()
     
+    # Save individual rewards if available
+    try:
+        individual_rewards = envs.envs[0].world.episode_individual_rewards
+        shared_rewards = [sum(r) for r in individual_rewards]
+        np.save(run_dir / 'individual_rewards.npy', individual_rewards)
+        np.save(run_dir / 'shared_rewards.npy', shared_rewards)
+        print("Saved reward logs to:", run_dir)
+    except Exception as e:
+        logging.warning("Failed to save reward logs: %s", e)
+
     # post process
     envs.close()
     if all_args.use_eval and eval_envs is not envs:

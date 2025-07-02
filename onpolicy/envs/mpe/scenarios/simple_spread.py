@@ -70,17 +70,33 @@ class Scenario(BaseScenario):
         return True if dist < dist_min else False
 
     def reward(self, agent, world):
-        # Agents are rewarded based on minimum agent distance to each landmark, penalized for collisions
-        rew = 0
-        for l in world.landmarks:
-            dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos)))
-                     for a in world.agents]
-            rew -= min(dists)
+        agent_index = world.agents.index(agent)
 
+        # Store per-agent rewards for logging
+        if not hasattr(world, 'individual_rewards'):
+            world.individual_rewards = [0.0 for _ in world.agents]
+
+        # Agent 0: reward is negative distance to landmark 0
+        if agent_index == 0:
+            dist = np.linalg.norm(agent.state.p_pos - world.landmarks[0].state.p_pos)
+            rew = -dist
+        # Agent 1: reward is negative distance to landmark 1
+        elif agent_index == 1:
+            dist = np.linalg.norm(agent.state.p_pos - world.landmarks[1].state.p_pos)
+            rew = -dist
+        else:
+            # Other agents: reward is negative distance to the nearest landmark
+            dists = [np.linalg.norm(agent.state.p_pos - l.state.p_pos) for l in world.landmarks]
+            rew = -min(dists)
+
+        # Optional: collision penalty
         if agent.collide:
             for a in world.agents:
                 if self.is_collision(a, agent):
                     rew -= 1
+
+        # Log individual reward
+        world.individual_rewards[agent_index] = rew
         return rew
 
     def observation(self, agent, world):
